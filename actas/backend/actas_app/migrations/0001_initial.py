@@ -11,6 +11,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
+        ('actas_app', '0000_enable_pg_trgm'),
     ]
 
     operations = [
