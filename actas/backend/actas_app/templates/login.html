@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Ingreso · Actas Civiles</title>
+  <style>
+    :root { --bg:#0f172a; --panel:#111827; --accent:#06b6d4; --text:#e5e7eb; --muted:#9ca3af; --danger:#ef4444; }
+    * { box-sizing: border-box; }
+    body {
+      margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+      background: radial-gradient(circle at 20% 20%, rgba(6,182,212,0.14), transparent 25%), radial-gradient(circle at 80% 20%, rgba(168,85,247,0.14), transparent 25%), var(--bg);
+      color: var(--text); font-family: "Segoe UI","Inter",system-ui,-apple-system,sans-serif;
+    }
+    .card { width:360px; background:var(--panel); padding:26px; border-radius:16px; border:1px solid rgba(255,255,255,0.05); box-shadow:0 20px 50px rgba(0,0,0,0.35); }
+    h1 { margin:0 0 6px; font-size:20px; }
+    p { margin:0 0 18px; color:var(--muted); font-size:13px; }
+    label { display:block; margin:10px 0 6px; color:var(--muted); font-size:13px; }
+    input {
+      width:100%; padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.04); color:var(--text); font-size:14px;
+    }
+    button {
+      margin-top:16px; width:100%; padding:12px; border:none; border-radius:12px; background:var(--accent); color:#0b172a; font-weight:700; cursor:pointer;
+    }
+    .error { color:var(--danger); font-size:13px; min-height:18px; }
+    .muted { color:var(--muted); font-size:12px; text-align:center; margin-top:12px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Actas Civiles</h1>
+    <p>Ingresa con tu usuario y contraseña.</p>
+    <div id="err" class="error"></div>
+    <label>Usuario</label>
+    <input id="username" value="admin">
+    <label>Contraseña</label>
+    <input id="password" type="password" value="admin">
+    <button id="btn-login">Ingresar</button>
+    <div class="muted">Admin/Digitador/Consulta según permisos.</div>
+  </div>
+
+  <script>
+    const err = document.getElementById('err');
+    document.getElementById('btn-login').onclick = async () => {
+      err.textContent = '';
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      try {
+        const resp = await fetch('/api/auth/login/', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({username, password})
+        });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error('Credenciales inválidas');
+        localStorage.setItem('access', data.access);
+        localStorage.setItem('refresh', data.refresh);
+        window.location.href = '/dashboard/';
+      } catch (e) {
+        err.textContent = 'Error de autenticación';
+      }
+    };
+  </script>
+</body>
+</html>

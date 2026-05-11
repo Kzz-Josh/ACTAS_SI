@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Panel de Actas Civiles</title>
+  <style>
+    :root {
+      --bg: #dfe3e7;
+      --panel: #f4f6f8;
+      --line: #d1d5db;
+      --text: #111827;
+      --muted: #6b7280;
+      --sidebar: #1f2a37;
+      --sidebar-active: #1e73c9;
+      --card-blue: #1e88e5;
+      --card-green: #0097a7;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      font-family: "Segoe UI", "Inter", system-ui, -apple-system, sans-serif;
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      height: 50px;
+      background: #4c5968;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 0 16px;
+      font-weight: 600;
+    }
+    header .user { display: flex; align-items: center; gap: 8px; }
+    .user-menu { position: relative; }
+    .user-button {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: transparent; border: none; color: #fff;
+      font-weight: 700; cursor: pointer; padding: 6px 8px; border-radius: 6px;
+    }
+    .user-button:hover { background: rgba(255,255,255,0.12); }
+    .user-dropdown {
+      position: absolute; right: 0; top: calc(100% + 8px);
+      background: #ffffff; color: #111827; min-width: 180px;
+      border: 1px solid #e5e7eb; border-radius: 8px;
+      box-shadow: 0 14px 30px rgba(0,0,0,0.25);
+      display: none; overflow: hidden; z-index: 80;
+    }
+    .user-dropdown a {
+      display: block; padding: 10px 12px; text-decoration: none;
+      color: #111827; font-weight: 700; font-size: 13px;
+    }
+    .user-dropdown a:hover { background: #f3f4f6; }
+    .layout { display: grid; grid-template-columns: 200px 1fr; flex: 1; min-height: 0; }
+    .sidebar {
+      background: var(--sidebar);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      padding: 12px 0;
+      gap: 6px;
+    }
+    .logo { height: 60px; display: grid; place-items: center; background: #f2f7fb; color: #1f2a37; font-weight: 700; }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 16px; color: #e5e7eb; text-decoration: none;
+      font-weight: 700; font-size: 14px;
+    }
+    .nav-item.active { background: var(--sidebar-active); color: #fff; }
+    .nav-item:hover { background: rgba(255,255,255,0.08); }
+    .nav-item .icon { flex-shrink: 0; width: 16px; text-align: center; }
+    .content {
+      background: var(--panel);
+      padding: 18px 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow: auto;
+    }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+    .card {
+      background: var(--card-blue);
+      color: #fff;
+      border-radius: 4px;
+      padding: 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .card.green { background: var(--card-green); }
+    .card .icon { font-size: 20px; }
+    .card .text { display: flex; flex-direction: column; gap: 4px; }
+    .card .label { font-size: 15px; font-weight: 700; }
+    .card .value { font-size: 18px; font-weight: 700; }
+    .search-wrap { display: flex; justify-content: center; }
+    .search-box {
+      display: flex; align-items: center; gap: 8px;
+      border: 1px solid #c9ced3; border-radius: 4px;
+      background: #f7f9fb; padding: 8px 10px; min-width: 360px;
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .search-box input { border: none; background: transparent; flex: 1; outline: none; font-size: 14px; color: #374151; }
+    .btn { border: none; border-radius: 4px; padding: 8px 12px; font-weight: 700; cursor: pointer; }
+    .btn-primary { background: #1e88e5; color: #fff; }
+    .btn-secondary { background: #e5e7eb; color: #111827; }
+    .btn-sm { padding: 4px 8px; font-size: 12px; }
+    .btn[disabled] { opacity: 0.6; cursor: not-allowed; }
+    .top-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #cfd4da; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid #e1e5ea; font-size: 13px; text-align: left; }
+    th { background: #f1f4f8; font-weight: 700; color: #374151; }
+    tbody tr:hover { background: #f8fafc; }
+    .muted { color: var(--muted); font-size: 13px; }
+    .error { color: #b91c1c; font-size: 13px; }
+    /* Modal */
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+      display: none; align-items: center; justify-content: center; z-index: 50;
+    }
+    .modal {
+      background: #fff; color: #111827; padding: 18px; border-radius: 6px; width: 440px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.25);
+    }
+    .modal h3 { margin: 0 0 10px; }
+    .modal label { color: #374151; font-size: 13px; }
+    .modal input, .modal select { width: 100%; margin-bottom: 8px; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; }
+    .modal .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+    .nav-item[data-type].active { background: var(--sidebar-active); color: #fff; }
+
+    /* PDF viewer overlay */
+    .viewer-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.65);
+      display: none; align-items: center; justify-content: center; z-index: 70;
+    }
+    .viewer {
+      width: 96vw; height: 92vh; background: #fff; border-radius: 8px; overflow: hidden;
+      display: grid; grid-template-columns: 2fr 1fr; box-shadow: 0 20px 40px rgba(0,0,0,0.35);
+    }
+    .viewer .pdf-pane { background: #0f172a; display: flex; flex-direction: column; }
+    .viewer iframe { width: 100%; height: 100%; border: none; flex: 1; background: #1f2937; }
+    .viewer .info { padding: 16px; display: flex; flex-direction: column; gap: 12px; overflow: auto; }
+    .viewer .info h3 { margin: 0; }
+    .viewer .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; font-size: 13px; }
+    .viewer .label { color: #6b7280; font-weight: 600; }
+    .viewer .value { color: #111827; }
+    .viewer .close-bar { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: #1e73c9; color: #fff; }
+    .viewer .close-bar button { background: rgba(255,255,255,0.2); color: #fff; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; }
+
+    /* Confirm dialog */
+    .confirm-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+      display: none; align-items: center; justify-content: center; z-index: 90;
+    }
+    .confirm-dialog {
+      width: 420px; background: #fff; border-radius: 10px; overflow: hidden;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.35);
+    }
+    .confirm-header {
+      background: #1f2a37; color: #fff; padding: 12px 14px; font-weight: 800;
+    }
+    .confirm-body { padding: 14px; color: #111827; font-size: 14px; }
+    .confirm-actions { padding: 12px 14px; display: flex; justify-content: flex-end; gap: 10px; background: #f3f4f6; }
+  </style>
+</head>
+<body>
+  <header>
+    <div style="flex:1"></div>
+    <div class="user user-menu" id="user-menu">
+      <button class="user-button" id="user-button" type="button">
+        <span id="user-name">ADMIN</span>
+        <span>▾</span>
+      </button>
+      <div class="user-dropdown" id="user-dropdown">
+        <a href="#" id="menu-logout">Cerrar sesión</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="logo">LOGO</div>
+      <a class="nav-item active" data-type="inicio"><span class="icon">•</span> Inicio</a>
+      <a class="nav-item" data-type="nacimientos"><span class="icon">•</span> Nacimientos</a>
+      <a class="nav-item" data-type="matrimonios"><span class="icon">•</span> Matrimonio</a>
+      <a class="nav-item" data-type="defunciones"><span class="icon">•</span> Defunción</a>
+      <a class="nav-item" data-type="usuarios"><span class="icon">•</span> Usuarios</a>
+    </aside>
+
+    <main class="content">
+      <div class="cards">
+        <div class="card green">
+          <div class="icon">👥</div>
+          <div class="text">
+            <div class="label">Usuarios</div>
+            <div class="value" id="count-users">-</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="icon">📄</div>
+          <div class="text">
+            <div class="label">Archivos</div>
+            <div class="value" id="count-actas">-</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="search-wrap">
+        <div class="search-box">
+          <input id="search" placeholder="Buscar por nombre...">
+          <button class="btn btn-secondary" id="btn-reload">Recargar</button>
+        </div>
+      </div>
+
+      <div class="top-row">
+        <div class="muted" id="list-info">Actas registradas</div>
+        <div class="row">
+          <button class="btn btn-primary" id="btn-new">Nueva acta</button>
+        </div>
+      </div>
+
+      <table id="tbl-actas">
+        <thead></thead>
+        <tbody></tbody>
+      </table>
+      <div class="error" id="error-msg"></div>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="modal">
+    <div class="modal">
+      <h3 id="modal-title">Nueva acta</h3>
+      <div id="modal-body"></div>
+      <div class="actions">
+        <button class="btn btn-secondary" id="btn-cancel">Cancelar</button>
+        <button class="btn btn-primary" id="btn-save">Guardar</button>
+      </div>
+      <div class="error" id="modal-error"></div>
+    </div>
+  </div>
+
+  <div class="viewer-backdrop" id="viewer">
+    <div class="viewer">
+      <div class="pdf-pane">
+        <div class="close-bar">
+          <div id="viewer-title">Previsualización</div>
+          <div><button id="viewer-close">Cerrar</button></div>
+        </div>
+        <iframe id="viewer-frame" title="PDF"></iframe>
+      </div>
+      <div class="info">
+        <h3>Datos del acta</h3>
+        <div class="grid" id="viewer-data"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="confirm-backdrop" id="confirm">
+    <div class="confirm-dialog">
+      <div class="confirm-header">Confirmar eliminación</div>
+      <div class="confirm-body" id="confirm-text">¿Estás seguro?</div>
+      <div class="confirm-actions">
+        <button class="btn btn-secondary" id="confirm-cancel" type="button">Cancelar</button>
+        <button class="btn btn-primary" id="confirm-ok" type="button">Eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const state = { access: null, refresh: null };
+    let currentType = 'inicio';
+    let listReqId = 0;
+    let countsReqId = 0;
+    const viewerState = { type: null, id: null };
+    const listInfo = document.getElementById('list-info');
+    const tableHead = document.querySelector('#tbl-actas thead');
+    const tbody = document.querySelector('#tbl-actas tbody');
+    const errorMsg = document.getElementById('error-msg');
+    const countUsers = document.getElementById('count-users');
+    const countActas = document.getElementById('count-actas');
+    const modal = document.getElementById('modal');
+    const modalBody = document.getElementById('modal-body');
+    const modalError = document.getElementById('modal-error');
+    const modalTitle = document.getElementById('modal-title');
+    let editingId = null;
+    let pendingDeleteId = null;
+
+    const api = async (path, opts={}, retry=true) => {
+      if (!opts.headers) opts.headers = {};
+      const isForm = opts.body instanceof FormData;
+      if (!isForm && !opts.headers['Content-Type']) {
+        opts.headers['Content-Type'] = 'application/json';
+      }
+      if (state.access) opts.headers['Authorization'] = 'Bearer ' + state.access;
+      const resp = await fetch(path, opts);
+      const data = await resp.json().catch(()=> ({}));
+      if (resp.status === 401 && retry && state.refresh) {
+        // intenta refrescar y reintentar una vez
+        const ref = await fetch('/api/auth/refresh/', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({refresh: state.refresh})
+        });
+        if (ref.ok) {
+          const nd = await ref.json();
+          state.access = nd.access;
+          localStorage.setItem('access', state.access);
+          return api(path, opts, false);
+        } else {
+          localStorage.removeItem('access'); localStorage.removeItem('refresh');
+          window.location.href = '/login/';
+          throw {status:401, data};
+        }
+      }
+      if (!resp.ok) throw {status:resp.status, data};
+      return data;
+    };
+
+    window.addEventListener('error', (ev) => {
+      const msg = ev?.error?.stack || ev?.message || 'Error inesperado en la página';
+      errorMsg.textContent = String(msg).slice(0, 500);
+    });
+    window.addEventListener('unhandledrejection', (ev) => {
+      const msg = ev?.reason?.stack || ev?.reason || 'Error de promesa no manejado';
+      errorMsg.textContent = String(msg).slice(0, 500);
+    });
+
+    function renderHeaders() {
+      let headers = "";
+      if (currentType === 'inicio') {
+        headers = "<tr><th>Usuario</th><th>Rol</th><th>Acción</th><th>Tipo Acta</th><th>ID Acta</th><th>Fecha</th><th>IP</th><th>Detalles</th></tr>";
+      } else if (currentType === 'usuarios') {
+        headers = "<tr><th>Usuario</th><th>Email</th><th>Nombre</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr>";
+      } else if (currentType === 'matrimonios') {
+        headers = "<tr><th>Año</th><th># Libro</th><th># Folio</th><th># Acta</th><th>Contrayente 1</th><th>Contrayente 2</th><th>Fecha Matrimonio</th><th>Observaciones</th><th>Archivo PDF</th><th>Acciones</th></tr>";
+      } else if (currentType === 'defunciones') {
+        headers = "<tr><th>Año</th><th># Libro</th><th># Folio</th><th># Acta</th><th>Nombre Difunto</th><th>Fecha Defunción</th><th>Observaciones</th><th>Archivo PDF</th><th>Acciones</th></tr>";
+      } else {
+        headers = "<tr><th>Año</th><th># Libro</th><th># Folio</th><th># Acta</th><th>Nombre Completo</th><th>Fecha Nacimiento</th><th>Observaciones</th><th>Archivo PDF</th><th>Acciones</th></tr>";
+      }
+      tableHead.innerHTML = headers;
+    }
+
+    function renderActas(list) {
+      tbody.innerHTML = "";
+      if (currentType === 'inicio') {
+        listInfo.textContent = `Histórico de acciones: ${list.length}`;
+      } else if (currentType === 'usuarios') {
+        listInfo.textContent = `Usuarios registrados: ${list.length}`;
+      } else {
+        listInfo.textContent = `Actas registradas (${currentType}): ${list.length}`;
+      }
+      list.forEach(a => {
+        let rowHtml = "";
+        if (currentType === 'inicio') {
+          const detalles = (a.details && typeof a.details === 'object') ? JSON.stringify(a.details) : (a.details || "");
+          const username = a.user__username || a.user_username || a.user || "";
+          rowHtml = `<td>${username}</td><td>${a.role||""}</td><td>${a.action||""}</td><td>${a.acta_type||""}</td><td>${a.acta_id||""}</td><td>${a.timestamp||""}</td><td>${a.ip_address||""}</td><td>${detalles}</td>`;
+        } else if (currentType === 'usuarios') {
+          const fullName = [a.first_name, a.last_name].filter(Boolean).join(" ");
+          const status = a.is_active ? "Activo" : "Inactivo";
+          const toggleLabel = a.is_active ? "Desactivar" : "Activar";
+          const actions = `<button class="btn btn-secondary btn-sm btn-user-edit" data-id="${a.id}">Editar</button>
+                           <button class="btn btn-secondary btn-sm btn-user-toggle" data-id="${a.id}" data-active="${a.is_active ? 1 : 0}">${toggleLabel}</button>
+                           <button class="btn btn-secondary btn-sm btn-user-reset" data-id="${a.id}">Reset</button>`;
+          rowHtml = `<td>${a.username||""}</td><td>${a.email||""}</td><td>${fullName}</td><td>${a.role||""}</td><td>${status}</td><td>${actions}</td>`;
+        } else {
+          const archivo = a.pdf_file ? a.pdf_file.split('/').pop() : "";
+          const link = a.pdf_file ? `<button class="btn btn-secondary btn-sm btn-view" data-id="${a.id}">Ver PDF</button>` : "";
+          const actions = `<button class="btn btn-secondary btn-sm btn-edit" data-id="${a.id}">Editar</button>
+                           <button class="btn btn-secondary btn-sm btn-del" data-id="${a.id}" data-numero="${a.numero_acta||''}">Eliminar</button>`;
+          if (currentType === 'matrimonios') {
+            rowHtml = `<td>${a.anio||""}</td><td>${a.libro||""}</td><td>${a.folio||""}</td><td>${a.numero_acta||""}</td><td>${a.contrayente1_nombre_completo||""}</td><td>${a.contrayente2_nombre_completo||""}</td><td>${a.fecha_matrimonio||""}</td><td>${a.observaciones||""}</td><td>${archivo} ${link}</td><td>${actions}</td>`;
+          } else if (currentType === 'defunciones') {
+            rowHtml = `<td>${a.anio||""}</td><td>${a.libro||""}</td><td>${a.folio||""}</td><td>${a.numero_acta||""}</td><td>${a.difunto_nombre_completo||""}</td><td>${a.fecha_defuncion||""}</td><td>${a.observaciones||""}</td><td>${archivo} ${link}</td><td>${actions}</td>`;
+          } else {
+            const nombre = [a.nombres, a.apellido_paterno, a.apellido_materno].filter(Boolean).join(" ");
+            rowHtml = `<td>${a.anio||""}</td><td>${a.libro||""}</td><td>${a.folio||""}</td><td>${a.numero_acta||""}</td><td>${nombre}</td><td>${a.fecha_nacimiento||""}</td><td>${a.observaciones||""}</td><td>${archivo} ${link}</td><td>${actions}</td>`;
+          }
+        }
+        const tr = document.createElement('tr');
+        tr.innerHTML = rowHtml;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function loadActas() {
+      if (currentType === 'inicio') {
+        await loadInicio();
+        return;
+      }
+      if (currentType === 'usuarios') {
+        const reqId = ++listReqId;
+        errorMsg.textContent = "";
+        try {
+          tbody.innerHTML = "";
+          listInfo.textContent = "Cargando...";
+          errorMsg.textContent = "Cargando...";
+          const data = await api(`/api/auth/users/?limit=20&offset=0`);
+          if (reqId !== listReqId) return;
+          renderActas(data.results || data);
+          errorMsg.textContent = "";
+        } catch (e) {
+          if (reqId !== listReqId) return;
+          const status = e && typeof e === 'object' ? e.status : null;
+          if (status === 403) errorMsg.textContent = "Sin permiso para ver usuarios.";
+          else if (status === 401) errorMsg.textContent = "Sesión expirada. Vuelve a iniciar sesión.";
+          else errorMsg.textContent = "No se pudo cargar.";
+        }
+        return;
+      }
+      const reqId = ++listReqId;
+      errorMsg.textContent = "";
+      try {
+        // limpiar para evitar que queden datos antiguos si falla la carga
+        tbody.innerHTML = "";
+        listInfo.textContent = "Cargando...";
+        errorMsg.textContent = "Cargando...";
+        const term = document.getElementById('search').value;
+        const base = `/api/actas/${currentType}/?limit=20&offset=0`;
+        const url = term ? `${base}&search=${encodeURIComponent(term)}` : base;
+        const data = await api(url);
+        if (reqId !== listReqId) return;
+        renderActas(data.results || data);
+        if (reqId === listReqId) errorMsg.textContent = "";
+      } catch (e) {
+        if (reqId !== listReqId) return;
+        const status = e && typeof e === 'object' ? e.status : null;
+        if (status === 401) {
+          errorMsg.textContent = "Sesión expirada. Vuelve a iniciar sesión.";
+        } else {
+          errorMsg.textContent = "No se pudo cargar.";
+        }
+      }
+    }
+
+    async function loadInicio() {
+      const reqList = ++listReqId;
+      const reqCounts = ++countsReqId;
+      tbody.innerHTML = "";
+      listInfo.textContent = "Cargando...";
+      errorMsg.textContent = "Cargando...";
+
+      const results = await Promise.allSettled([
+        api('/api/auth/me/'),
+        api('/api/dashboard/summary/'),
+      ]);
+
+      if (reqCounts === countsReqId) {
+        const me = results[0].status === 'fulfilled' ? results[0].value : null;
+        if (me) document.getElementById('user-name').textContent = (me.username || 'USER').toUpperCase();
+
+        const summary = results[1].status === 'fulfilled' ? results[1].value : null;
+        if (!summary) {
+          countUsers.textContent = "-";
+          countActas.textContent = "-";
+        } else {
+          countUsers.textContent = summary.users_count ?? "-";
+          const counts = summary.counts || {};
+          countActas.textContent = counts.total_archivos ?? "-";
+        }
+      }
+
+      if (reqList !== listReqId) return;
+      if (results[1].status !== 'fulfilled') {
+        const e = results[1].reason;
+        const status = e && typeof e === 'object' ? e.status : null;
+        if (status === 401) errorMsg.textContent = "Sesión expirada. Vuelve a iniciar sesión.";
+        else errorMsg.textContent = "No se pudo cargar.";
+        return;
+      }
+
+      const summary = results[1].value;
+      renderHeaders();
+      if (!summary.audit_enabled) {
+        renderActas([]);
+        errorMsg.textContent = "Sin permiso para ver auditoría.";
+      } else {
+        renderActas(summary.audit_logs || []);
+        errorMsg.textContent = "";
+      }
+    }
+
+    async function loadCounts() {
+      const reqId = ++countsReqId;
+      const results = await Promise.allSettled([
+        api('/api/auth/me/'),
+        api('/api/dashboard/summary/'),
+      ]);
+      if (reqId !== countsReqId) return;
+
+      const me = results[0].status === 'fulfilled' ? results[0].value : null;
+      if (me) document.getElementById('user-name').textContent = (me.username || 'USER').toUpperCase();
+
+      const summary = results[1].status === 'fulfilled' ? results[1].value : null;
+      if (!summary) {
+        countUsers.textContent = "-";
+        countActas.textContent = "-";
+        return;
+      }
+
+      countUsers.textContent = summary.users_count ?? "-";
+      const counts = summary.counts || {};
+      const cn = counts.nacimientos ?? 0;
+      const cm = counts.matrimonios ?? 0;
+      const cd = counts.defunciones ?? 0;
+      const total = counts.total_archivos ?? (cn + cm + cd);
+      countActas.textContent = currentType === 'inicio'
+        ? total
+        : currentType === 'usuarios' ? (summary.users_count ?? "-")
+        : currentType === 'nacimientos' ? cn
+        : currentType === 'matrimonios' ? cm
+        : cd;
+    }
+
+    function updateNewButton() {
+      const btnNew = document.getElementById('btn-new');
+      if (!btnNew) return;
+      btnNew.style.display = currentType === 'inicio' ? 'none' : 'inline-block';
+      btnNew.textContent = currentType === 'usuarios' ? 'Nuevo usuario' : 'Nueva acta';
+    }
+
+    document.getElementById('btn-reload').onclick = loadActas;
+    document.getElementById('search').addEventListener('keyup', (ev)=>{ if(ev.key==='Enter') loadActas(); });
+    function doLogout() {
+      localStorage.removeItem('access');
+      localStorage.removeItem('refresh');
+      window.location.href = '/login/';
+    }
+
+    const userButton = document.getElementById('user-button');
+    const userDropdown = document.getElementById('user-dropdown');
+    userButton.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      userDropdown.style.display = (userDropdown.style.display === 'block') ? 'none' : 'block';
+    });
+    document.getElementById('menu-logout').addEventListener('click', (ev) => {
+      ev.preventDefault();
+      userDropdown.style.display = 'none';
+      doLogout();
+    });
+    document.addEventListener('click', (ev) => {
+      const menu = document.getElementById('user-menu');
+      if (!menu.contains(ev.target)) userDropdown.style.display = 'none';
+    });
+    document.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Escape') userDropdown.style.display = 'none';
+    });
+    document.getElementById('btn-new').onclick = () => {
+      if (currentType === 'inicio') return;
+      modal.style.display = 'flex';
+      modalError.textContent = '';
+      editingId = null;
+      modalTitle.textContent = currentType === 'usuarios' ? 'Nuevo usuario' : `Nueva acta (${currentType})`;
+      modalBody.innerHTML = renderForm(currentType);
+    };
+    document.getElementById('btn-cancel').onclick = () => { modal.style.display = 'none'; };
+    document.getElementById('btn-save').onclick = saveActa;
+    document.getElementById('viewer-close').onclick = () => {
+      closeViewer();
+    };
+    document.getElementById('confirm-cancel').onclick = () => closeConfirm();
+    document.getElementById('confirm-ok').onclick = () => confirmDelete();
+    document.getElementById('confirm').addEventListener('click', (ev) => {
+      if (ev.target && ev.target.id === 'confirm') closeConfirm();
+    });
+    document.getElementById('viewer').addEventListener('click', (ev) => {
+      if (ev.target && ev.target.id === 'viewer') closeViewer();
+    });
+    document.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Escape') closeViewer();
+    });
+    tbody.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('.btn-view');
+      if (!btn) return;
+      const id = btn.getAttribute('data-id');
+      openViewer(id);
+    });
+    tbody.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('.btn-edit');
+      if (!btn) return;
+      const id = btn.getAttribute('data-id');
+      openEdit(id);
+    });
+    tbody.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('.btn-del');
+      if (!btn) return;
+      const id = btn.getAttribute('data-id');
+      const numero = btn.getAttribute('data-numero') || id;
+      showConfirm(id, numero);
+    });
+    tbody.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('.btn-user-edit');
+      if (!btn) return;
+      const id = btn.getAttribute('data-id');
+      openUserEdit(id);
+    });
+    tbody.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('.btn-user-toggle');
+      if (!btn) return;
+      const id = btn.getAttribute('data-id');
+      const active = btn.getAttribute('data-active') === '1';
+      toggleUser(id, active);
+    });
+    tbody.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('.btn-user-reset');
+      if (!btn) return;
+      const id = btn.getAttribute('data-id');
+      openResetPassword(id);
+    });
+    document.querySelectorAll('.nav-item[data-type]').forEach(el => {
+      el.onclick = () => {
+        setType(el.getAttribute('data-type'));
+      };
+    });
+
+    function renderForm(type) {
+      if (type === 'usuarios') {
+        return `
+          <label>Usuario</label><input id="f-username" required>
+          <label>Email</label><input id="f-email" type="email" required>
+          <label>Nombres</label><input id="f-first">
+          <label>Apellidos</label><input id="f-last">
+          <label>Rol</label>
+          <select id="f-role">
+            <option value="ADMIN">ADMIN</option>
+            <option value="DIGITADOR">DIGITADOR</option>
+            <option value="CONSULTA">CONSULTA</option>
+          </select>
+          <label>Contraseña</label><input id="f-pass" type="password" placeholder="Obligatoria al crear">
+        `;
+      }
+      if (type === 'nacimientos') {
+        return `
+          <label>Nombres</label><input id="f-nombres" required>
+          <label>Apellido paterno</label><input id="f-ap-p" required>
+          <label>Apellido materno</label><input id="f-ap-m" required>
+          <label>Distrito</label><input id="f-distrito" required>
+          <label>Fecha nacimiento</label><input id="f-fecha-nac" type="date" required>
+          <label>Libro</label><input id="f-libro" required>
+          <label>Folio</label><input id="f-folio" required>
+          <label>Número de acta</label><input id="f-numero" required>
+          <label>Año</label><input id="f-anio" type="number" required>
+          <label>Fecha inscripción</label><input id="f-fecha-ins" type="date" required>
+          <label>Observaciones</label><input id="f-obs">
+          <label>Adjuntar PDF</label><input id="f-pdf" type="file" accept="application/pdf">
+        `;
+      }
+      if (type === 'matrimonios') {
+        return `
+          <label>Contrayente 1</label><input id="f-c1" required>
+          <label>Contrayente 2</label><input id="f-c2" required>
+          <label>Fecha matrimonio</label><input id="f-fecha-mat" type="date" required>
+          <label>Libro</label><input id="f-libro" required>
+          <label>Folio</label><input id="f-folio" required>
+          <label>Número de acta</label><input id="f-numero" required>
+          <label>Año</label><input id="f-anio" type="number" required>
+          <label>Fecha inscripción</label><input id="f-fecha-ins" type="date" required>
+          <label>Observaciones</label><input id="f-obs">
+          <label>Adjuntar PDF</label><input id="f-pdf" type="file" accept="application/pdf">
+        `;
+      }
+      return `
+        <label>Nombre difunto</label><input id="f-nombre" required>
+        <label>Fecha defunción</label><input id="f-fecha-def" type="date" required>
+        <label>Libro</label><input id="f-libro" required>
+        <label>Folio</label><input id="f-folio" required>
+        <label>Número de acta</label><input id="f-numero" required>
+        <label>Año</label><input id="f-anio" type="number" required>
+        <label>Fecha inscripción</label><input id="f-fecha-ins" type="date" required>
+        <label>Observaciones</label><input id="f-obs">
+        <label>Adjuntar PDF</label><input id="f-pdf" type="file" accept="application/pdf">
+      `;
+    }
+
+    async function saveActa() {
+      if (currentType === 'inicio') return;
+      modalError.textContent = '';
+      try {
+        if (currentType === 'usuarios') {
+          const payload = {
+            username: document.getElementById('f-username').value,
+            email: document.getElementById('f-email').value,
+            first_name: document.getElementById('f-first').value,
+            last_name: document.getElementById('f-last').value,
+            role: document.getElementById('f-role').value,
+          };
+          const pass = document.getElementById('f-pass').value;
+          if (!editingId && !pass) {
+            modalError.textContent = 'La contraseña es obligatoria para crear.';
+            return;
+          }
+          if (pass) payload.password = pass;
+
+          const url = editingId ? `/api/auth/users/${editingId}/` : `/api/auth/users/`;
+          const method = editingId ? 'PATCH' : 'POST';
+          await api(url, {method, body: JSON.stringify(payload)});
+          modal.style.display = 'none';
+          editingId = null;
+          loadCounts();
+          loadActas();
+          return;
+        }
+
+        const file = document.getElementById('f-pdf')?.files[0];
+        let payload = {
+          numero_acta: document.getElementById('f-numero').value,
+          libro: document.getElementById('f-libro').value,
+          folio: document.getElementById('f-folio').value,
+          anio: Number(document.getElementById('f-anio').value),
+          fecha_inscripcion: document.getElementById('f-fecha-ins').value,
+          observaciones: document.getElementById('f-obs')?.value || "",
+          oficial_registro: "Sistema",
+        };
+        if (currentType === 'nacimientos') {
+          Object.assign(payload, {
+            nombres: document.getElementById('f-nombres').value,
+            apellido_paterno: document.getElementById('f-ap-p').value,
+            apellido_materno: document.getElementById('f-ap-m').value,
+            fecha_nacimiento: document.getElementById('f-fecha-nac').value,
+            distrito: document.getElementById('f-distrito').value,
+          });
+        } else if (currentType === 'matrimonios') {
+          Object.assign(payload, {
+            contrayente1_nombre_completo: document.getElementById('f-c1').value,
+            contrayente2_nombre_completo: document.getElementById('f-c2').value,
+            fecha_matrimonio: document.getElementById('f-fecha-mat').value,
+          });
+        } else {
+          Object.assign(payload, {
+            difunto_nombre_completo: document.getElementById('f-nombre').value,
+            fecha_defuncion: document.getElementById('f-fecha-def').value,
+          });
+        }
+        let body;
+        let headers = {};
+        if (file) {
+          body = new FormData();
+          Object.entries(payload).forEach(([k,v]) => body.append(k, v));
+          body.append('pdf_file', file);
+        } else {
+          body = JSON.stringify(payload);
+        }
+        const url = editingId ? `/api/actas/${currentType}/${editingId}/` : `/api/actas/${currentType}/`;
+        const method = editingId ? 'PATCH' : 'POST';
+        await api(url, {method, body, headers});
+        modal.style.display = 'none';
+        editingId = null;
+        loadCounts();
+        loadActas();
+      } catch (e) {
+        modalError.textContent = 'Error al guardar (revisa campos y permisos)';
+      }
+    }
+
+    function buildPdfUrl(id) {
+      const base = `/api/actas/${currentType}/${id}/pdf/preview/`;
+      const token = state.access ? `?token=${encodeURIComponent(state.access)}` : "";
+      return base + token;
+    }
+
+    function setType(type) {
+      currentType = type || 'inicio';
+      document.querySelectorAll('.nav-item[data-type]').forEach(n => n.classList.remove('active'));
+      const active = document.querySelector(`.nav-item[data-type="${currentType}"]`);
+      if (active) active.classList.add('active');
+      updateNewButton();
+      renderHeaders();
+      // limpiar tabla inmediatamente para que no queden datos de la pestaña anterior
+      tbody.innerHTML = "";
+      listInfo.textContent = "Cargando...";
+      errorMsg.textContent = "";
+      if (currentType === 'inicio') {
+        loadInicio();
+      } else {
+        loadCounts();
+        loadActas();
+      }
+    }
+
+    function fillForm(type, acta) {
+      if (type === 'usuarios') {
+        document.getElementById('f-username').value = acta.username || "";
+        document.getElementById('f-email').value = acta.email || "";
+        document.getElementById('f-first').value = acta.first_name || "";
+        document.getElementById('f-last').value = acta.last_name || "";
+        document.getElementById('f-role').value = acta.role || "CONSULTA";
+        document.getElementById('f-pass').value = "";
+        return;
+      }
+      document.getElementById('f-libro').value = acta.libro || "";
+      document.getElementById('f-folio').value = acta.folio || "";
+      document.getElementById('f-numero').value = acta.numero_acta || "";
+      document.getElementById('f-anio').value = acta.anio || "";
+      document.getElementById('f-fecha-ins').value = acta.fecha_inscripcion || "";
+      document.getElementById('f-obs').value = acta.observaciones || "";
+
+      if (type === 'nacimientos') {
+        document.getElementById('f-nombres').value = acta.nombres || "";
+        document.getElementById('f-ap-p').value = acta.apellido_paterno || "";
+        document.getElementById('f-ap-m').value = acta.apellido_materno || "";
+        document.getElementById('f-distrito').value = acta.distrito || "";
+        document.getElementById('f-fecha-nac').value = acta.fecha_nacimiento || "";
+      } else if (type === 'matrimonios') {
+        document.getElementById('f-c1').value = acta.contrayente1_nombre_completo || "";
+        document.getElementById('f-c2').value = acta.contrayente2_nombre_completo || "";
+        document.getElementById('f-fecha-mat').value = acta.fecha_matrimonio || "";
+      } else if (type === 'defunciones') {
+        document.getElementById('f-nombre').value = acta.difunto_nombre_completo || "";
+        document.getElementById('f-fecha-def').value = acta.fecha_defuncion || "";
+      }
+    }
+
+    async function openEdit(id) {
+      if (currentType === 'inicio') return;
+      try {
+        const acta = await api(`/api/actas/${currentType}/${id}/`);
+        editingId = id;
+        modal.style.display = 'flex';
+        modalError.textContent = '';
+        modalTitle.textContent = `Editar acta (${currentType})`;
+        modalBody.innerHTML = renderForm(currentType);
+        fillForm(currentType, acta);
+      } catch (e) {
+        alert('No se pudo cargar el registro para editar.');
+      }
+    }
+
+    async function openUserEdit(id) {
+      try {
+        const user = await api(`/api/auth/users/${id}/`);
+        editingId = id;
+        modal.style.display = 'flex';
+        modalError.textContent = '';
+        modalTitle.textContent = 'Editar usuario';
+        modalBody.innerHTML = renderForm('usuarios');
+        fillForm('usuarios', user);
+      } catch (e) {
+        alert('No se pudo cargar el usuario para editar.');
+      }
+    }
+
+    async function toggleUser(id, isActive) {
+      const action = isActive ? 'deactivate' : 'activate';
+      try {
+        await api(`/api/auth/users/${id}/${action}/`, {method:'POST'});
+        loadActas();
+      } catch (e) {
+        alert('No se pudo actualizar el estado del usuario.');
+      }
+    }
+
+    function openResetPassword(id) {
+      const pass = prompt('Nueva contraseña para el usuario:');
+      if (!pass) return;
+      resetUserPassword(id, pass);
+    }
+
+    async function resetUserPassword(id, pass) {
+      try {
+        await api(`/api/auth/users/${id}/reset_password/`, {method:'POST', body: JSON.stringify({new_password: pass})});
+        alert('Contraseña actualizada.');
+      } catch (e) {
+        alert('No se pudo resetear la contraseña.');
+      }
+    }
+
+    async function deleteActa(id) {
+      if (currentType === 'inicio') return;
+      try {
+        await api(`/api/actas/${currentType}/${id}/`, {method:'DELETE'});
+        loadCounts();
+        loadActas();
+      } catch (e) {
+        alert('No se pudo eliminar. Verifica permisos.');
+      }
+    }
+
+    function showConfirm(id, numero) {
+      pendingDeleteId = id;
+      document.getElementById('confirm-text').textContent = `¿Estás seguro de eliminar el acta N° ${numero}?`;
+      document.getElementById('confirm').style.display = 'flex';
+    }
+
+    function closeConfirm() {
+      pendingDeleteId = null;
+      document.getElementById('confirm').style.display = 'none';
+    }
+
+    async function confirmDelete() {
+      if (!pendingDeleteId) return;
+      const id = pendingDeleteId;
+      closeConfirm();
+      await deleteActa(id);
+    }
+
+    function renderInfo(acta) {
+      const grid = document.getElementById('viewer-data');
+      const rows = [];
+      const add = (label, value) => rows.push(`<div class="label">${label}</div><div class="value">${value ?? ""}</div>`);
+      add("Tipo", currentType);
+      add("Número", acta.numero_acta);
+      add("Libro", acta.libro);
+      add("Folio", acta.folio);
+      add("Año", acta.anio);
+      add("Fecha inscripción", acta.fecha_inscripcion);
+      add("Observaciones", acta.observaciones || "");
+      if (currentType === 'nacimientos') {
+        add("Nombre", [acta.nombres, acta.apellido_paterno, acta.apellido_materno].filter(Boolean).join(" "));
+        add("Fecha nacimiento", acta.fecha_nacimiento);
+        add("Distrito", acta.distrito);
+      } else if (currentType === 'matrimonios') {
+        add("Contrayente 1", acta.contrayente1_nombre_completo);
+        add("Contrayente 2", acta.contrayente2_nombre_completo);
+        add("Fecha matrimonio", acta.fecha_matrimonio);
+      } else if (currentType === 'defunciones') {
+        add("Difunto", acta.difunto_nombre_completo);
+        add("Fecha defunción", acta.fecha_defuncion);
+      }
+      grid.innerHTML = rows.join("");
+    }
+
+    async function openViewer(id) {
+      try {
+        viewerState.type = currentType;
+        viewerState.id = id;
+        const acta = await api(`/api/actas/${currentType}/${id}/`);
+        renderInfo(acta);
+        document.getElementById('viewer-title').textContent = `Acta ${acta.numero_acta || id}`;
+        document.getElementById('viewer-frame').src = buildPdfUrl(id);
+        document.getElementById('viewer').style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+      } catch (e) {
+        alert('No se pudo cargar la previsualización. Verifica sesión y que el PDF exista.');
+      }
+    }
+
+    function closeViewer() {
+      const viewer = document.getElementById('viewer');
+      if (!viewer || viewer.style.display === 'none') return;
+      viewer.style.display = 'none';
+      document.getElementById('viewer-frame').src = 'about:blank';
+      document.getElementById('viewer-data').innerHTML = '';
+      viewerState.type = null;
+      viewerState.id = null;
+      requestAnimationFrame(() => { document.body.style.overflow = ''; });
+      // Requerimiento: al cerrar, volver a Inicio y refrescar todo
+      setTimeout(() => { setType('inicio'); }, 0);
+    }
+
+    (function init(){
+      const access = localStorage.getItem('access');
+      const refresh = localStorage.getItem('refresh');
+      if (!access || !refresh) { window.location.href='/login/'; return; }
+      state.access = access; state.refresh = refresh;
+      setType('inicio');
+    })();
+  </script>
+</body>
+</html>

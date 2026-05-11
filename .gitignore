@@ -1,0 +1,20 @@
+.env
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.sqlite3
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Django uploads and generated files
+media/
+staticfiles/
+
+# Editor and OS noise
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
